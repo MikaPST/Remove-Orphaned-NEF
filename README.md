@@ -1,10 +1,8 @@
----
-
 # 📸 Remove-Orphaned-NEF.ps1
 
-A PowerShell script for photographers who want to clean up orphaned RAW files after culling their shots.
-
 [🇬🇧 Read in English](README.md) | [🇫🇷 Lire en Français](README_FR.md)
+
+A PowerShell script for photographers who want to clean up orphaned RAW files after culling their shots.
 
 ## 🧭 The problem it solves
 
