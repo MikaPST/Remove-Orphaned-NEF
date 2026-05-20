@@ -18,6 +18,26 @@ De nombreux photographes shootent en mode RAW+JPEG. Lors du tri, ils visionnent 
 - 📊 Affiche une barre de progression en temps réel
 - 🛡️ Gestion des erreurs — les fichiers verrouillés sont loggés et ignorés sans planter le script
 
+## 🔓 Politique d'exécution Windows
+ 
+Par défaut, Windows bloque l'exécution des scripts PowerShell. Si vous obtenez une erreur `UnauthorizedAccess` au lancement du script, deux options s'offrent à vous :
+ 
+**Option 1 — Débloquer uniquement ce fichier** (recommandée, sans modification globale) :
+ 
+```powershell
+Unblock-File -Path ".\Remove-Orphaned-NEF.ps1"
+```
+ 
+Cette commande retire le flag « téléchargé depuis internet » que Windows appose automatiquement sur les fichiers récupérés depuis GitHub, sans toucher à la politique d'exécution globale.
+ 
+**Option 2 — Autoriser les scripts locaux pour votre utilisateur** (ouvrir PowerShell en administrateur) :
+ 
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+ 
+`RemoteSigned` autorise l'exécution des scripts locaux, mais exige toujours une signature numérique pour les scripts téléchargés depuis internet.
+
 ## 🛠️ Utilisation
 
 ### 1. Cloner le dépôt
