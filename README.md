@@ -1,37 +1,80 @@
+[🇬🇧 Read in English](README.md) | [🇫🇷 Lire en Français](README_FR.md)
+
+---
+
 # 📸 Remove-Orphaned-NEF.ps1
 
-## Description
-`Remove-Orphaned-NEF.ps1` est un script PowerShell conçu pour comparer les fichiers `.nef` (RAW) avec leurs versions `.jpg` correspondantes dans un dossier spécifique. Il supprime les fichiers `.nef` pour lesquels aucune version `.jpg` correspondante n'existe, afin de libérer de l'espace disque. Un fichier de log est généré pour documenter les actions effectuées par le script.
+A PowerShell script for photographers who want to clean up orphaned RAW files after culling their shots.
 
-## 🚀 Fonctionnalités
-- 🔍 Compare les fichiers `.nef` et `.jpg` dans un dossier donné
-- 🗑️ Supprime les fichiers `.nef` sans version `.jpg` correspondante
-- 📄 Génère un fichier de log pour documenter les actions
-- 📊 Affiche la progression de la comparaison
+## 🧭 The problem it solves
 
+Many photographers shoot in RAW+JPEG mode. When culling, they review the JPEGs and delete the ones that are blurry or uninteresting — but the corresponding `.nef` RAW files remain on disk, silently wasting space. This script detects those orphaned `.nef` files and removes them automatically.
 
-## 🛠️ Utilisation
-1. Clonez le dépôt sur votre machine locale.
-    ```bash
-    git clone https://github.com/MikaPST/Remove-Orphaned-NEF.git
-    cd Remove-Orphaned-NEF
-    ```
-2. Ouvrez le script `Remove-Orphaned-NEF.ps1` dans un éditeur de texte et définissez la variable `$dossier` avec le chemin du répertoire contenant vos fichiers `.nef` et `.jpg`.
-    ```powershell
-    $dossier = "C:/chemin/vers/dossier/contenant/JPGetNEF"
-    ```
-3. Exécutez le script dans PowerShell.
-    ```powershell
-    ./Remove-Orphaned-NEF.ps1
-    ```
-4. Consultez le fichier de log généré pour les détails des actions effectuées.
+## 🚀 Features
 
+- 🔍 Compares `.nef` files against their `.jpg` / `.jpeg` counterparts (case-insensitive)
+- 🧪 **Dry-run mode** — simulate the operation before deleting anything
+- 🗂️ **Recursive mode** — optionally scan sub-folders
+- 🗑️ Deletes orphaned `.nef` files with optional `-Force` flag to skip confirmation
+- 📄 Generates a timestamped log file documenting every action
+- 📊 Displays a real-time progress bar
+- 🛡️ Graceful error handling — locked files are logged and skipped without crashing
 
-## 📝 Licence
+## 🛠️ Usage
 
-Ce projet est distribué sous la licence Apache 2.0. Vous pouvez en savoir plus sur cette licence à l'adresse suivante : [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+### 1. Clone the repository
 
+```bash
+git clone https://github.com/MikaPST/Remove-Orphaned-NEF.git
+cd Remove-Orphaned-NEF
+```
+
+### 2. Run the script
+
+Pass the path to your photo folder via the `-Dossier` parameter:
+
+```powershell
+./Remove-Orphaned-NEF.ps1 -Dossier "D:/Photos/2024"
+```
+
+### 3. Recommended workflow
+
+Always run a **dry-run first** to preview what would be deleted:
+
+```powershell
+# Simulate — nothing will be deleted
+./Remove-Orphaned-NEF.ps1 -Dossier "D:/Photos/2024" -DryRun
+
+# Delete for real
+./Remove-Orphaned-NEF.ps1 -Dossier "D:/Photos/2024"
+
+# Include sub-folders, skip confirmation
+./Remove-Orphaned-NEF.ps1 -Dossier "D:/Photos/2024" -Recurse -Force
+```
+
+## ⚙️ Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `-Dossier` | `string` | Path to the folder containing your `.nef` and `.jpg` files |
+| `-Recurse` | `switch` | Also scan sub-folders |
+| `-DryRun` | `switch` | Simulate without deleting any file |
+| `-Force` | `switch` | Skip confirmation prompts |
+
+## 📋 Log file
+
+A timestamped log file is created next to the script after each run:
+
+```
+log_Remove-Orphaned-NEF_20260520-143022.txt
+```
+
+It records every deleted file (with its size), any errors encountered, and a final summary.
+
+## 📝 License
+
+Distributed under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 ## 📧 Contact
 
-Pour toute question ou suggestion, n'hésitez pas à me contacter à [contact@michael-pastor.com](mailto:contact@michael-pastor.com).
+Questions or suggestions? Feel free to reach out at [contact@michael-pastor.com](mailto:contact@michael-pastor.com).
