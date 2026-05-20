@@ -18,6 +18,26 @@ Many photographers shoot in RAW+JPEG mode. When culling, they review the JPEGs a
 - 📊 Displays a real-time progress bar
 - 🛡️ Graceful error handling — locked files are logged and skipped without crashing
 
+## 🔓 Windows execution policy
+ 
+By default, Windows blocks the execution of PowerShell scripts. If you get an `UnauthorizedAccess` error when running the script, you have two options:
+ 
+**Option 1 — Unblock just this file** (recommended, no global change):
+ 
+```powershell
+Unblock-File -Path ".\Remove-Orphaned-NEF.ps1"
+```
+ 
+This removes the "downloaded from the internet" flag that Windows automatically sets on files retrieved from GitHub, without touching your global execution policy.
+ 
+**Option 2 — Allow local scripts for your user** (open PowerShell as administrator):
+ 
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+ 
+`RemoteSigned` allows local scripts to run freely, but still requires a digital signature for scripts downloaded from the internet.
+
 ## 🛠️ Usage
 
 ### 1. Clone the repository
