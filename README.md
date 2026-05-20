@@ -73,6 +73,6 @@ It records every deleted file (with its size), any errors encountered, and a fin
 
 Distributed under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
-## 📧 Contact
+## 🤝 Contributing
 
-Questions or suggestions? Feel free to reach out at [contact@michael-pastor.com](mailto:contact@michael-pastor.com).
+Contributions are welcome! Feel free to open an issue or submit a pull request.
