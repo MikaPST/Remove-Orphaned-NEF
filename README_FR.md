@@ -73,6 +73,6 @@ Il enregistre chaque fichier supprimé (avec sa taille), les éventuelles erreur
 
 Distribué sous la [licence Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
-## 📧 Contact
+## 🤝 Contribution
 
-Une question ou une suggestion ? N'hésitez pas à me contacter à [contact@michael-pastor.com](mailto:contact@michael-pastor.com).
+Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou à soumettre une pull request.
