@@ -1,94 +1,151 @@
 # -----------------------------------------------------------------------------
 # Script Name: Remove-Orphaned-NEF.ps1
 # Author: Michael PASTOR (MikaPST)
-# Date: 26-May-2024
-# Version: 1.0
+# Date: 20-May-2026
+# Version: 2.0
 # License: Apache 2.0
 #
 # Description:
-# Ce script PowerShell a été conçu pour comparer les fichiers .nef (RAW) avec 
-# leurs versions .jpg correspondantes dans un dossier spécifique. Il permet de 
-# supprimer les fichiers .nef pour lesquels aucune version .jpg correspondante 
-# n'existe, afin de libérer de l'espace disque. Un fichier de log est généré pour 
-# documenter les actions effectuées par le script.
+# Ce script PowerShell compare les fichiers .nef (RAW) avec leurs versions
+# .jpg/.jpeg correspondantes dans un dossier. Il supprime les fichiers .nef
+# orphelins (sans JPEG associé) afin de libérer de l'espace disque.
+# Un fichier de log horodaté documente chaque action effectuée.
 #
-# Utilisation:
-# Ce script peut être exécuté sans paramètres spécifiques. Il suffit de définir 
-# la variable `$dossier` avec le chemin du répertoire contenant les fichiers .nef 
-# et .jpg.
+# Paramètres:
+#   -Dossier   Chemin du répertoire à analyser (obligatoire)
+#   -Recurse   Parcourir également les sous-dossiers
+#   -DryRun    Simuler sans supprimer aucun fichier
+#   -Force     Supprimer sans demande de confirmation
 #
-# Exemple:
-# ./Remove-Orphaned-NEF.ps1
+# Exemples:
+#   ./Remove-Orphaned-NEF.ps1 -Dossier "D:/Photos/2024"
+#   ./Remove-Orphaned-NEF.ps1 -Dossier "D:/Photos/2024" -DryRun
+#   ./Remove-Orphaned-NEF.ps1 -Dossier "D:/Photos/2024" -Recurse -Force
 #
 # Licence:
-# Ce script est distribué sous la licence Apache 2.0. Vous pouvez en savoir 
-# plus sur cette licence à l'adresse suivante : 
+# Ce script est distribué sous la licence Apache 2.0.
 # http://www.apache.org/licenses/LICENSE-2.0
-#
 # -----------------------------------------------------------------------------
 
-# Chemin du dossier contenant les fichiers
-$dossier = "C:/chemin/vers/dossier/contenant/JPGetNEF"
+[CmdletBinding(SupportsShouldProcess)]
+param(
+    [string] $Dossier = "C:/chemin/vers/dossier/contenant/JPGetNEF",
+    [switch] $Recurse,   # Parcourir les sous-dossiers
+    [switch] $DryRun,    # Simuler sans supprimer
+    [switch] $Force      # Pas de confirmation interactive
+)
 
-# Obtenir le chemin du répertoire où se trouve le script
-$scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Definition
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
-# Obtenir la date et l'heure actuelle pour inclure dans le nom du fichier de log
+# ── Fichier de log ────────────────────────────────────────────────────────────
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $dateHeure = Get-Date -Format "yyyyMMdd-HHmmss"
+$logFile   = Join-Path $scriptDir "log_Remove-Orphaned-NEF_$dateHeure.txt"
 
-# Chemin du fichier de log avec la date et l'heure actuelle dans son nom
-$logFile = Join-Path -Path $scriptDirectory -ChildPath "log_Remove-Orphaned-NEF_$dateHeure.txt"
-
-# Fonction pour écrire dans le fichier de log
 function Write-Log {
-    param(
-        [string]$message
-    )
-    $logTimestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logMessage = "$logTimestamp - $message"
-    Add-content -Path $logFile -Value $logMessage
+    param([string]$message)
+    $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Add-Content -Path $logFile -Value "$ts - $message"
 }
 
-# Log de début de comparaison
-Write-Log "Début de la comparaison des fichiers dans le dossier $dossier"
+# ── Validation du dossier ─────────────────────────────────────────────────────
+if (-not (Test-Path $Dossier -PathType Container)) {
+    Write-Error "Dossier introuvable : $Dossier"
+    exit 1
+}
 
-# Récupérer tous les fichiers .nef
-$fichiersNEF = Get-ChildItem -Path $dossier -Filter "*.nef"
+# ── En-tête ───────────────────────────────────────────────────────────────────
+$mode = if ($DryRun) { "[DRY-RUN]" } else { "[RÉEL]" }
+$modeColor = if ($DryRun) { 'Cyan' } else { 'Yellow' }
+$modeMsg   = if ($DryRun) { "Simulation — aucun fichier ne sera supprimé." } `
+                          else { "Les fichiers NEF orphelins seront supprimés." }
 
-# Initialiser la variable pour stocker l'espace gagné
+Write-Host "`n$mode $modeMsg" -ForegroundColor $modeColor
+Write-Host "Dossier analysé : $Dossier"
+Write-Host "Récursif        : $($Recurse.IsPresent)`n"
+
+Write-Log "=== Début $mode ==="
+Write-Log "Dossier : $Dossier | Récursif : $($Recurse.IsPresent)"
+
+# ── Collecte des fichiers NEF ─────────────────────────────────────────────────
+$getParams = @{
+    Path    = $Dossier
+    Filter  = '*.nef'
+    Recurse = $Recurse.IsPresent
+}
+$fichiersNEF = Get-ChildItem @getParams
+
+if ($fichiersNEF.Count -eq 0) {
+    $msg = "Aucun fichier .NEF trouvé dans $Dossier."
+    Write-Host $msg
+    Write-Log $msg
+    Write-Log "=== Fin ==="
+    exit 0
+}
+
+Write-Host "$($fichiersNEF.Count) fichier(s) NEF trouvé(s). Analyse en cours...`n"
+
+# ── Boucle principale ─────────────────────────────────────────────────────────
 $espaceGagne = 0
+$supprimes   = 0
+$erreurs     = 0
+$i           = 0
 
-# Initialiser la variable pour le compteur de progression
-$progression = 0
-
-# Parcourir chaque fichier .nef
 foreach ($nef in $fichiersNEF) {
-    # Construire le chemin du fichier .jpg correspondant
-    $jpg = [System.IO.Path]::ChangeExtension($nef.FullName, ".jpg")
-    
-    # Vérifier si le fichier .jpg existe
-    if (-not (Test-Path $jpg)) {
-        # Ajouter la taille du fichier .nef à l'espace gagné
-        $espaceGagne += $nef.Length
-        
-        # Supprimer le fichier .nef s'il n'y a pas de version .jpg correspondante
-        Remove-Item $nef.FullName -Force
-        Write-Log "Fichier $nef supprimé car la version .jpg correspondante est manquante."
+    $i++
+    Write-Progress -Activity "Analyse des fichiers NEF" `
+                   -Status "$i / $($fichiersNEF.Count) — $($nef.Name)" `
+                   -PercentComplete ([int]($i / $fichiersNEF.Count * 100))
+
+    # Recherche insensible à la casse : .jpg, .JPG et .jpeg
+    $dir      = $nef.DirectoryName
+    $baseName = $nef.BaseName
+    $jpgExiste = (Test-Path (Join-Path $dir "$baseName.jpg"))  -or
+                 (Test-Path (Join-Path $dir "$baseName.JPG"))  -or
+                 (Test-Path (Join-Path $dir "$baseName.jpeg")) -or
+                 (Test-Path (Join-Path $dir "$baseName.JPEG"))
+
+    if (-not $jpgExiste) {
+        $tailleNef = $nef.Length
+        $espaceGagne += $tailleNef
+        $supprimes++
+
+        if ($DryRun) {
+            Write-Log "DRY-RUN   : $($nef.FullName) ($([math]::Round($tailleNef / 1MB, 2)) Mo) — aurait été supprimé."
+        }
+        else {
+            try {
+                Remove-Item $nef.FullName -Force
+                Write-Log "SUPPRIMÉ  : $($nef.FullName) ($([math]::Round($tailleNef / 1MB, 2)) Mo)"
+            }
+            catch {
+                $erreurs++
+                $supprimes--
+                $espaceGagne -= $tailleNef
+                Write-Log "ERREUR    : $($nef.FullName) — $_"
+                Write-Warning "Impossible de supprimer : $($nef.Name)"
+            }
+        }
     }
-    
-    # Mettre à jour la progression
-    $progression++
-    $pourcentage = ($progression / $fichiersNEF.Count) * 100
-    Write-Progress -Activity "Comparaison des fichiers" -Status "Progression : $pourcentage %" -PercentComplete $pourcentage
 }
 
-# Convertir la taille de l'espace gagné en mégaoctets
-$espaceGagneMo = $espaceGagne / 1MB
+Write-Progress -Activity "Analyse des fichiers NEF" -Completed
 
-# Log de l'espace gagné
-Write-Log "Espace gagné: $espaceGagneMo Mo"
+# ── Résumé ────────────────────────────────────────────────────────────────────
+$espMo   = [math]::Round($espaceGagne / 1MB, 2)
+$action  = if ($DryRun) { "seraient supprimés" } else { "supprimés" }
 
-# Log de fin de comparaison
-Write-Log "Fin de la comparaison des fichiers."
+$summary = @"
 
-Write-Host "Comparaison terminée. Les détails sont enregistrés dans $logFile."
+=== Résumé $mode ===
+  NEF analysés         : $($fichiersNEF.Count)
+  NEF $action          : $supprimes
+  Espace libéré        : $espMo Mo
+  Erreurs de suppression : $erreurs
+  Log                  : $logFile
+"@
+
+Write-Host $summary
+Write-Log $summary
+Write-Log "=== Fin ==="
